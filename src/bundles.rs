@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use serde::Serialize;
 
-pub fn list() -> Vec<BundleVersion> {
+pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
     platform::list()
 }
 
@@ -21,6 +21,8 @@ mod platform {
         display_name: Option<String>,
         #[serde(rename = "CFBundleName")]
         bundle_name: Option<String>,
+        #[serde(rename = "CFBundleExecutable")]
+        bundle_executable: Option<String>,
         #[serde(rename = "CFBundleIdentifier")]
         bundle_id: Option<String>,
         #[serde(rename = "CFBundleShortVersionString")]
@@ -29,20 +31,17 @@ mod platform {
         sparkle_url: Option<String>
     }
 
-    pub fn list() -> Vec<BundleVersion> {
+    pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
         let mut paths = Vec::new();
 
         scan_dir("/Applications", &mut paths, true);
 
         paths.sort();
 
-        let mut results: Vec<BundleVersion> = Vec::new();
+        let mut results: Vec<Result<BundleVersion, Box<dyn std::error::Error>>> = Vec::new();
 
         for path in &paths {
-            match parse(path) {
-                Ok(bundle) => results.push(bundle),
-                Err(e) => println!("apropos: failed to parse plist: {} at {}", e, path),
-            }
+            results.push(parse(path))
         }
         results
     }
@@ -62,8 +61,8 @@ mod platform {
         }
     }
 
-    fn parse(path: &String) -> Result<BundleVersion, Box<dyn std::error::Error>> {
-        let info: InfoPlist = plist::from_file(format!("{path}/Contents/Info.plist"))?;
+    pub(super) fn parse(path: &String) -> Result<BundleVersion, Box<dyn std::error::Error>> { //  e.to_string()
+        let info: InfoPlist = plist::from_file(format!("{path}/Contents/Info.plist")).map_err(|e| format!("Failed to parse plist: {path} due to [{e}]"))?;
 
         let id = info.bundle_id.ok_or("missing CFBundleIdentifier")?;
         let version = info.version.ok_or("missing CFBundleShortVersionString")?;
@@ -71,9 +70,9 @@ mod platform {
 
         let receipt = std::path::Path::new(&path).join("Contents/_MASReceipt/receipt");
 
-        let source = String::from(if receipt.exists() { "appStore" } else if sparkle_url.is_some() { "sparkle" } else { "unknown" });
+        let source = String::from(if receipt.exists() { "appStore" } else if sparkle_url.is_some() { "sparkle" } else { "*" });
 
-        let name = info.bundle_name.ok_or("missing CFBundleName")?;
+        let name = info.bundle_name.or(info.display_name).or(info.bundle_executable).ok_or("missing CFBundleName")?;
 
         let mut meta: HashMap<String, String> = HashMap::new();
 
@@ -88,6 +87,24 @@ mod platform {
             source,
             meta
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::platform::parse;
+
+    #[test]
+    fn test_parse_plist() {
+        let path = "/Applications/Adobe After Effects 2025/Adobe After Effects 2025.app/Contents/Info.plist".to_string();
+        parse(&path).expect("failed to parse test plist");
+
+        // let bundle = parse(&path).expect("failed to parse test plist");
+        // assert_eq!(bundle.id, "com.example.testapp");
+        // assert_eq!(bundle.name, "TestApp");
+        // assert_eq!(bundle.version, "2.1.0");
+        // assert_eq!(bundle.source, "sparkle");
+        // assert_eq!(bundle.meta.get("sparkle_url").map(String::as_str), Some("https://example.com/appcast.xml"));
     }
 }
 
