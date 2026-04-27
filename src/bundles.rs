@@ -9,11 +9,8 @@ pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
 mod platform {
     use std::collections::HashMap;
     use crate::bundles::BundleVersion;
-    use plist::Value;
     use serde::Deserialize;
-    use std::fmt::format;
     use std::fs;
-    use std::process::Command;
 
     #[derive(Deserialize)]
     struct InfoPlist {

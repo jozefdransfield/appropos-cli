@@ -1,17 +1,17 @@
 use crate::bundles::BundleVersion;
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-use std::fs::FileType;
 
 mod bundles;
 
 use clap::Parser;
+use cli_colors::Colorizer;
 use itertools::Itertools;
+
 
 #[derive(Parser)]
 #[command(version, about = "Appropos: Software Version Checker")]
 struct Args {
-    /// Output as JSON
     #[arg(long)]
     verbose: bool,
 }
@@ -49,29 +49,51 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     let client = reqwest::Client::new();
 
-    let meh = results.into_iter().flatten().collect::<Vec<BundleVersion>>();
+    let meh = results
+        .into_iter()
+        .flatten()
+        .collect::<Vec<BundleVersion>>();
 
     let resp: Vec<Recommendation> = client
         .post("https://api.appropos.app/check")
+        // .post("http://localhost:8080/check")
         .json(&meh)
-        .send().await?
-        .json().await?;
+        .send()
+        .await?
+        .json()
+        .await?;
 
-    for bundle in resp {
-        let recommendation = bundle.recommendation_type.unwrap_or("".to_string());
-        // if (recommendation == "UPDATE") {
-        println!(
-            "{} - {} - {} - {} - {}",
-            bundle.name,
-            bundle.id,
-            bundle.version,
-            bundle.recommended_version.unwrap_or("".to_string()),
-            recommendation
-        );
-        // }
-    }
+    let colorizer = Colorizer::new();
+
+    print_bundles(colorizer.underline(colorizer.red("Recommended Updates:")), resp
+        .iter()
+        .filter(|b| b.recommendation_type == Some(String::from("UPDATE"))).collect_vec());
+
+    print_bundles(colorizer.underline(colorizer.green("Upto Date:")), resp
+        .iter()
+        .filter(|b| b.recommendation_type.is_none()).collect_vec());
+
+    print_bundles(colorizer.underline(colorizer.green("Untracked by Appropos")), resp
+        .iter()
+        .filter(|b| b.recommendation_type == Some(String::from("UNTRACKED"))).collect_vec());
 
     Ok(())
+}
+
+fn print_bundles(section_title: String, bundles: Vec<&Recommendation>) {
+    println!("{} - ({})", section_title, bundles.len());
+    if bundles.is_empty() {
+        println!("None");
+    } else {
+        for bundle in bundles {
+            print_bundle(&bundle);
+        }
+    }
+    println!();
+}
+
+fn print_bundle(bundle: &Recommendation) {
+    println!("{} - {} - {}", bundle.name, bundle.id, bundle.version, );
 }
 
 #[derive(Serialize, Deserialize)]
