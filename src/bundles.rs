@@ -103,27 +103,32 @@ mod platform {
     use crate::bundles::BundleVersion;
     use winreg::RegKey;
     use winreg::enums::*;
+    use std::collections::HashMap;
 
     pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
-        {
-            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
-            let uninstall = hklm.open_subkey(
-                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
-            )?;
 
-            for key_name in uninstall.enum_keys().flatten() {
-                let subkey = uninstall.open_subkey(&key_name)?;
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        let uninstall = hklm.open_subkey(
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+        ).unwrap();
 
-                let display_name: Result<String, _> = subkey.get_value("DisplayName");
-                let display_version: Result<String, _> = subkey.get_value("DisplayVersion");
+        let meh =  uninstall.enum_keys().flatten().map ( |key_name| {
+            let subkey = uninstall.open_subkey(&key_name)?;
 
-                if let (Ok(name), Ok(version)) = (display_name, display_version) {
-                    println!("{} - {} - {}", key_name, name, version);
-                    // key_name is usually the GUID, e.g. {A1B2C3D4-...}
-                }
-}
-            Vec::new()
-        }
+            let display_name = subkey.get_value("DisplayName")?;
+            let display_version = subkey.get_value("DisplayVersion")?;
+            let publisher : String =  subkey.get_value("Publisher")?;
+
+            return Ok(BundleVersion {
+                name : display_name,
+                id : publisher,
+                version : display_version,
+                source : String::from("*"),
+                meta : HashMap::new()
+            });
+        }).collect();    
+        
+         return meh;
     }
 }
 
