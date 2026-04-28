@@ -87,6 +87,14 @@ mod platform {
     }
 }
 
+#[cfg(target_os = "windows")]
+mod platform {
+    pub fn search() -> Vec<String> {
+        eprintln!("apropos: hello from windows");
+        Vec::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::platform::parse;
