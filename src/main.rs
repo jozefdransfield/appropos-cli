@@ -47,6 +47,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
         println!("\n\n");
     }
 
+    let info = os_info::get();
+
     let client = reqwest::Client::new();
 
     let meh = results
@@ -54,10 +56,23 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .flatten()
         .collect::<Vec<BundleVersion>>();
 
+    print!("{}", info.os_type());
+
+    let os = match info.os_type() {
+        os_info::Type::Macos => String::from("macos"),
+        _ => String::from("unknown")
+    };
+
+    let request = CheckRequest {
+        os: os,
+        os_version: info.version().to_string(),
+        bundles: meh
+    };
+
     let resp: Vec<Recommendation> = client
-        .post("https://api.appropos.app/check")
-        // .post("http://localhost:8080/check")
-        .json(&meh)
+        // .post("https://api.appropos.app/check")
+        .post("http://localhost:8080/check")
+        .json(&request)
         .send()
         .await?
         .json()
@@ -105,4 +120,12 @@ pub struct Recommendation {
     pub recommended_version: Option<String>,
     #[serde(rename = "type")]
     pub recommendation_type: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct CheckRequest {
+    pub os: String,
+    #[serde(rename = "osVersion")]
+    pub os_version: String,
+    pub bundles: Vec<BundleVersion>
 }
