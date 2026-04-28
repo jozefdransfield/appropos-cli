@@ -89,7 +89,7 @@ mod platform {
 
 #[cfg(target_os = "windows")]
 mod platform {
-    pub fn search() -> Vec<String> {
+    pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {{
         eprintln!("apropos: hello from windows");
         Vec::new()
     }
