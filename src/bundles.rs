@@ -101,9 +101,27 @@ mod platform {
 #[cfg(target_os = "windows")]
 mod platform {
     use crate::bundles::BundleVersion;
+    use winreg::RegKey;
+    use winreg::enums::*;
+
     pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
         {
-            eprintln!("apropos: hello from windows");
+            let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+            let uninstall = hklm.open_subkey(
+                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"
+            )?;
+
+            for key_name in uninstall.enum_keys().flatten() {
+                let subkey = uninstall.open_subkey(&key_name)?;
+
+                let display_name: Result<String, _> = subkey.get_value("DisplayName");
+                let display_version: Result<String, _> = subkey.get_value("DisplayVersion");
+
+                if let (Ok(name), Ok(version)) = (display_name, display_version) {
+                    println!("{} - {} - {}", key_name, name, version);
+                    // key_name is usually the GUID, e.g. {A1B2C3D4-...}
+                }
+}
             Vec::new()
         }
     }
