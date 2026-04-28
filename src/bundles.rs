@@ -5,6 +5,17 @@ pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
     platform::list()
 }
 
+
+#[derive(Serialize)]
+pub struct BundleVersion {
+    pub name: String,
+    pub id: String,
+    pub version: String,
+    pub source: String,
+    pub meta: HashMap<String, String>
+}
+
+
 #[cfg(target_os = "macos")]
 mod platform {
     use std::collections::HashMap;
@@ -89,6 +100,7 @@ mod platform {
 
 #[cfg(target_os = "windows")]
 mod platform {
+    use crate::bundles::BundleVersion;
     pub fn list() -> Vec<Result<BundleVersion, Box<dyn std::error::Error>>> {
         {
             eprintln!("apropos: hello from windows");
@@ -113,21 +125,4 @@ mod tests {
         // assert_eq!(bundle.source, "sparkle");
         // assert_eq!(bundle.meta.get("sparkle_url").map(String::as_str), Some("https://example.com/appcast.xml"));
     }
-}
-
-#[cfg(not(any(unix, windows)))]
-mod platform {
-    pub fn search() -> Vec<String> {
-        eprintln!("apropos: unsupported platform");
-        Vec::new()
-    }
-}
-
-#[derive(Serialize)]
-pub struct BundleVersion {
-    pub name: String,
-    pub id: String,
-    pub version: String,
-    pub source: String,
-    pub meta: HashMap<String, String>
 }
