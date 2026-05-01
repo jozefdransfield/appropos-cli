@@ -70,8 +70,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     };
 
     let resp: Vec<Recommendation> = client
-        // .post("https://api.appropos.app/check")
-        .post("http://localhost:8080/check")
+        .post("https://api.appropos.app/check")
+        // .post("http://localhost:8080/check")
         .json(&request)
         .send()
         .await?
