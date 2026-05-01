@@ -120,8 +120,8 @@ mod platform {
             let publisher : String =  subkey.get_value("Publisher")?;
 
             return Ok(BundleVersion {
+                id : format!("{publisher} :: {display_name}"),
                 name : display_name,
-                id : publisher,
                 version : display_version,
                 source : String::from("*"),
                 meta : HashMap::new()
